@@ -270,23 +270,23 @@ class Attention(nn.Module):
             torch.Tensor: Output tensor after attention.
 
         """
-        bsz, seqlen, _ = x.shape
-        xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
+        bsz, seqlen, _ = x.shape #[batch_size, seq_length, hidden_dim]
+        xq, xk, xv = self.wq(x), self.wk(x), self.wv(x) # Q K V
 
-        xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
-        xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)  #  n_heads * head_dim,
+        xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim) # n_kv_heads * head_dim
+        xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim) # 
 
-        xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
+        xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis) #
 
-        self.cache_k = self.cache_k.to(xq)
-        self.cache_v = self.cache_v.to(xq)
+        self.cache_k = self.cache_k.to(xq) # 将 k v 缓存起来 后续进行生成的时候 直接复用
+        self.cache_v = self.cache_v.to(xq) # 
 
-        self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
-        self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv
+        self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk  # 
+        self.cache_v[:bsz, start_pos : start_pos + seqlen] = xv  # 
 
-        keys = self.cache_k[:bsz, : start_pos + seqlen]
-        values = self.cache_v[:bsz, : start_pos + seqlen]
+        keys = self.cache_k[:bsz, : start_pos + seqlen]  # 
+        values = self.cache_v[:bsz, : start_pos + seqlen]  #  
 
         # repeat k/v heads if n_kv_heads < n_heads
         keys = repeat_kv(keys, self.n_rep)  # (bs, cache_len + seqlen, n_local_heads, head_dim)
